@@ -1,0 +1,165 @@
+
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Mentoria - Recomendações (MVP + DB)</title>
+  <style>
+    :root{
+      --bg:#f7f8fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --brand:#4f46e5;
+      --brand-weak:#eef2ff;
+      --success:#10b981;
+      --success-weak:#dcfce7;
+      --badge:#eef2f7;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg);
+      color:var(--text);
+    }
+    .container{max-width:980px;margin:32px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    h1{font-size:28px;letter-spacing:.2px;margin:0}
+    .hint{font-size:12px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(16,24,40,.05);margin:14px 0}
+    label{display:block;margin:8px 0 6px;font-weight:600;}
+    select,button{padding:10px 12px;border-radius:10px;border:1px solid var(--border);width:100%;background:#fff}
+    button{cursor:pointer;background:var(--brand);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 4px 14px rgba(79,70,229,.25)}
+    button:hover{filter:brightness(.98)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}}
+
+    /* Results */
+    .result-item{padding:14px 0;border-bottom:1px dashed var(--border)}
+    .result-head{display:flex;align-items:baseline;gap:12px;justify-content:space-between}
+    .result-title{font-size:16.5px;font-weight:700;line-height:1.4;margin:0}
+    .compat{background:var(--brand-weak);color:var(--brand);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--badge);font-size:12px;color:var(--muted);border:1px solid var(--border)}
+    .badge.ok{background:var(--success-weak);color:var(--success);border-color:#b7f4cd}
+    .muted{color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Mentoria Acadêmica — Recomendações</h1>
+    </header>
+
+    <div class="card">
+      <h3 style="margin:0 0 12px 0">Consulta do Mentorado</h3>
+      <div class="grid">
+        <div>
+          <label>Curso</label>
+          <select id="curso" onchange="loadInteresses()"></select>
+        </div>
+        <div>
+          <label>Área de interesse</label>
+          <select id="interesse"></select>
+        </div>
+        <div>
+          <label>Disponibilidade</label>
+          <select id="disponibilidade">
+            <option>Manhã</option>
+            <option>Tarde</option>
+            <option>Noite</option>
+          </select>
+        </div>
+        <div>
+          <label>Instituição</label>
+          <select id="instituicao">
+            <option>USP</option>
+            <option>UFSC</option>
+            <option>UFRJ</option>
+            <option>UFMG</option>
+            <option>UFPR</option>
+            <option>UFBA</option>
+            <option>PUC</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button onclick="recomendar()">Recomendar Mentores</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Resultados</h3>
+      <div id="results"></div>
+      <div class="muted" id="resultsHint"></div>
+    </div>
+  </div>
+
+<script>
+const interessesPorCurso = {
+  "Computação": ["IA","Banco de Dados","Redes","Segurança","UX","Produto"],
+  "Engenharia": ["Automação","Redes","IA","Gestão de Projetos"],
+  "Psicologia": ["Orientação Acadêmica","Carreira","Neuropsicologia"],
+  "Design": ["UX","UI","Produto","Motion"],
+  "Administração": ["Finanças","Projetos","Empreendedorismo","Marketing"]
+};
+
+function loadCursos(){
+  const cursoSel = document.getElementById('curso');
+  cursoSel.innerHTML = Object.keys(interessesPorCurso).map(c => `<option>${c}</option>`).join('');
+  loadInteresses();
+}
+
+function loadInteresses(){
+  const curso = document.getElementById('curso').value;
+  const interesses = interessesPorCurso[curso] || [];
+  const sel = document.getElementById('interesse');
+  sel.innerHTML = interesses.map(i => `<option>${i}</option>`).join('');
+}
+
+async function recomendar(){
+  const payload = {
+    curso: document.getElementById('curso').value,
+    interesse: document.getElementById('interesse').value,
+    disponibilidade: document.getElementById('disponibilidade').value,
+    instituicao: document.getElementById('instituicao').value
+  };
+  const res = await fetch('http://localhost:8000/recomendar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  const box = document.getElementById('results');
+  const hint = document.getElementById('resultsHint');
+  if(data.recomendacoes){
+    const q = data.consulta;
+    hint.textContent = data.recomendacoes.length ? "" : "Nenhum mentor encontrado para este curso.";
+    box.innerHTML = data.recomendacoes.map(r => {
+      const tag = (val, ok) => `<span class="badge ${ok?'ok':''}">${val}</span>`;
+      const curso = tag(r.curso, r.curso===q.curso);
+      const interesse = tag(r.interesse, r.interesse===q.interesse);
+      const disp = tag(r.disponibilidade, r.disponibilidade===q.disponibilidade);
+      const inst = tag(r.instituicao, r.instituicao===q.instituicao);
+      return `
+      <div class="result-item">
+        <div class="result-head">
+          <div class="result-title">${r.rank}. ${r.nome}</div>
+          <div class="compat">Compatibilidade: ${r.compatibilidade}/10</div>
+        </div>
+        <div class="badges">${curso} ${interesse} ${disp} ${inst}</div>
+      </div>`;
+    }).join('');
+  } else {
+    hint.textContent = "";
+    box.innerHTML = '<span class="muted">Erro: '+(data.error||'verifique o backend')+'</span>';
+  }
+}
+
+loadCursos();
+</script>
+</body>
+</html>

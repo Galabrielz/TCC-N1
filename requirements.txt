@@ -1,0 +1,8 @@
+flask
+flask-cors
+scikit-learn
+pandas
+scipy
+SQLAlchemy>=2.0
+pymysql
+python-dotenv
